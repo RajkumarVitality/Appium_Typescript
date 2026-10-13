@@ -39,6 +39,17 @@ export class MHALandingScreen extends BaseScreen {
     return this.click("//*[@resource-id='btn_vg_button_i_understand']", "//*[@name='btn_vg_button_i_understand']");
   }
 
+  async assertDataPrivacyScreenVisible(): Promise<void> {
+    await this.element(
+      "//*[@resource-id='btn_vg_button_i_understand']",
+      "//*[@name='btn_vg_button_i_understand']"
+    );
+  }
+
+  clickDataPrivacyBackButton(): Promise<void> {
+    return this.click("//*[@resource-id='vg_back_button']", "//*[@name='vg_back_button']");
+  }
+
   async assertLowRiskPointsUpdated(): Promise<void> {
     await this.assertTextContains(await this.element("//*[@resource-id='txtpoints_001']", "//*[@name='txtpoints_001']"), '300/600 POINTS');
   }
