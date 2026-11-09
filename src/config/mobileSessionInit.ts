@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { loadProperties } from './properties.js';
+import { decodeBase64Property, loadProperties } from './properties.js';
 
 export type MobilePlatform = 'Android' | 'iOS';
 
@@ -11,7 +11,13 @@ const fileProperties = loadProperties([
 ]);
 
 export function setting(key: string): string | undefined {
-  return process.env[key]?.trim() || fileProperties.get(key)?.trim() || undefined;
+  const environmentValue = process.env[key]?.trim();
+  if (environmentValue) {
+    return environmentValue;
+  }
+
+  const propertyValue = fileProperties.get(key)?.trim();
+  return propertyValue ? decodeBase64Property(key, propertyValue) : undefined;
 }
 
 export function requiredSetting(key: string, ...aliases: string[]): string {
@@ -183,7 +189,7 @@ export function buildCapabilities(
     ltOptions.project = project;
   }
 
-  return {
+  return Object.assign({
     platformName: platform,
     'appium:automationName': platform === 'iOS' ? 'XCUITest' : 'UiAutomator2',
     'appium:deviceName': device,
@@ -194,7 +200,7 @@ export function buildCapabilities(
     //...(platform === 'iOS' ? { 'appium:autoAcceptAlerts': true, 'appium:resignApp': true } : {}),
     ...(platform === 'iOS' ? { 'appium:autoAcceptAlerts': true} : {}),
     'LT:Options': ltOptions
-  };
+  }, { 'appium:idleTimeout': 1800 });
 }
 
 export function getArtifactsRoot(): string {

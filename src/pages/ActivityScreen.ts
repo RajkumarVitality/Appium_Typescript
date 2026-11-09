@@ -38,7 +38,7 @@ export class ActivityScreen extends BaseScreen {
   }
 
   async openScreeningVaccinationFeedcard(): Promise<ScreeningVaccinationScreen> {
-    await this.scrollAndClick("//*[@resource-id='Screenings Vaccinations Tracking_2']", "//*[@name='Screenings Vaccinations Tracking_2']", 5);
+    await this.scrollAndClick("//*[@resource-id='Screenings Vaccinations Tracking_2']", "//*[@name='Screenings Vaccinations Tracking_2']", 15);
     return new ScreeningVaccinationScreen(this.session);
   }
 

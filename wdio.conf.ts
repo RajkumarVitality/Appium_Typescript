@@ -15,10 +15,11 @@ import { executionReporter } from './src/utils/ExecutionReporter.js';
 import { closeLiveSessionTab, openInDefaultBrowser } from './src/utils/browserLauncher.js';
 import type { MobilePlatform } from './src/config/mobileSessionInit.js';
 import { browser } from '@wdio/globals';
-import { addAttachment, addStep } from '@wdio/allure-reporter';
+import { addAttachment, addLabel, addStep } from '@wdio/allure-reporter';
 import { executionTimeouts } from './src/config/timeoutsHandling.js';
 import { resolveScenario, scenarios, suites } from './src/config/runner.js';
 import { initializeTestAccountsForSpecs } from './tests/helpers/user_helpers/TestUser.js';
+import { userCreationSetting } from './src/config/userCreation.js';
 
 const platform: MobilePlatform = selectedPlatform();
 const scenario = resolveScenario(settingOr('LT_SCENARIO', 'loginAndLogout'), platform);
@@ -66,6 +67,7 @@ export const config: WebdriverIO.Config = {
     }
   },
   async beforeTest(test) {
+    addLabel('environment', (userCreationSetting('VG_ENVIRONMENT') ?? 'mdev').toLowerCase());
     executionReporter.startTest(test.parent, test.title, { addAttachment, addStep });
     executionReporter.log('Starting test execution.');
     executionReporter.log(`Timeouts: element=${timeouts.element} ms, test=${timeouts.test} ms.`);

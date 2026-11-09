@@ -49,13 +49,13 @@ function setup(platform: 'Android' | 'iOS', visibleAfter: number) {
 
 test('clicks an already visible target without scrolling', async () => {
   const fixture = setup('Android', 0);
-  await fixture.screen.open(5);
+  await fixture.screen.open(10);
   assert.deepEqual(fixture.counts(), { swipes: 0, clicks: 1, releases: 0 });
 });
 
 test('uses a slow short swipe and stops immediately when the target reaches the viewport', async () => {
   const fixture = setup('Android', 1);
-  await fixture.screen.open(5);
+  await fixture.screen.open(10);
   assert.deepEqual(fixture.counts(), { swipes: 1, clicks: 1, releases: 1 });
   assert.deepEqual(fixture.pauses, [750]);
   assert.deepEqual(fixture.gestures, [[{

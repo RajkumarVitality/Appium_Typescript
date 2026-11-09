@@ -4,8 +4,8 @@
 
 ```java
 XCUITestOptions options = new XCUITestOptions();
-options.setDeviceName("iPhone 16");
-options.setPlatformVersion("18");
+options.setDeviceName("iPhone .*");
+options.setPlatformVersion(".*");
 options.setApp("/path/to/app.ipa");
 options.setAutomationName("XCUITest");
 options.setBundleId("com.example.app");

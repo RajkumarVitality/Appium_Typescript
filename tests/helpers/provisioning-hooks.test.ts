@@ -6,15 +6,20 @@ import { executionReporter } from '../../src/utils/ExecutionReporter.js';
 import { WelcomeScreen } from '../../src/pages/WelcomeScreen.js';
 import { HealthyLivingScreen } from '../../src/pages/HealthyLivingScreen.js';
 import { LoginScreen } from '../../src/pages/LoginScreen.js';
+import { HomeScreen } from '../../src/pages/HomeScreen.js';
+import { ActivityScreen } from '../../src/pages/ActivityScreen.js';
+import { ScreeningVaccinationScreen } from '../../src/pages/ScreeningVaccinationScreen.js';
 import { MobileSession } from '../../src/utils/Mobile Utils_Scrolll_Xpath_Timeout.js';
 import { initializeTestAccountsForSpecs, testAccounts } from './user_helpers/TestUser.js';
 
-for (const file of ['login-logout', 'mha-low-risk', 'mha-high-risk', 'incorrect-password-lockout', 'mha-unanswered', 'mha-exit-partial']) {
+for (const file of ['login-logout', 'mha-low-risk', 'mha-high-risk', 'incorrect-password-lockout', 'mha-unanswered', 'mha-exit-partial', 'screening-vaccination']) {
   const outcomes = file === 'incorrect-password-lockout'
     ? ['success', 'api-error', 'same-password']
-    : ['success', 'api-error'];
+    : file === 'screening-vaccination'
+      ? ['success', 'success-ios', 'api-error']
+      : ['success', 'api-error'];
   for (const outcome of outcomes) {
-    const succeeds = outcome === 'success';
+    const succeeds = outcome === 'success' || outcome === 'success-ios';
     test(`${file} pre-session provisioning: ${outcome}`, async t => {
       const settings = {
         VG_ENVIRONMENT: 'mdev',
@@ -27,7 +32,7 @@ for (const file of ['login-logout', 'mha-low-risk', 'mha-high-risk', 'incorrect-
         VG_MDEV_API_BEARER_TOKEN: 'test-bearer',
         APP_PASSWORD: 'test-password',
         INCORRECT_APP_PASSWORD: outcome === 'same-password' ? 'test-password' : 'intentionally-wrong-password',
-        PLATFORM: 'Android',
+        PLATFORM: outcome === 'success-ios' ? 'iOS' : 'Android',
         configUserAgent: 'test-agent'
       };
       for (const [key, value] of Object.entries(settings)) {
@@ -67,7 +72,7 @@ for (const file of ['login-logout', 'mha-low-risk', 'mha-high-risk', 'incorrect-
       let submits = 0;
       let incorrectMessages = 0;
       let lockoutMessages = 0;
-      if (file === 'incorrect-password-lockout') {
+      if (file === 'incorrect-password-lockout' || file === 'screening-vaccination') {
         const session = new MobileSession('Android');
         const healthyLiving = new HealthyLivingScreen(session);
         const loginScreen = new LoginScreen(session);
@@ -91,6 +96,25 @@ for (const file of ['login-logout', 'mha-low-risk', 'mha-high-risk', 'incorrect-
         t.mock.method(LoginScreen.prototype, 'gotItButton', async () => {});
         t.mock.method(LoginScreen.prototype, 'assertLockoutMessage', async () => { lockoutMessages++; });
         t.mock.method(LoginScreen.prototype, 'dismissLockoutMessage', async () => {});
+      }
+      if (file === 'screening-vaccination') {
+        const session = new MobileSession('Android');
+        const activity = new ActivityScreen(session);
+        const form = new ScreeningVaccinationScreen(session);
+        t.mock.method(HomeScreen.prototype, 'dismissNotificationPopup', async () => {});
+        t.mock.method(HomeScreen.prototype, 'acceptPermissionDialog', async () => {});
+        t.mock.method(HomeScreen.prototype, 'assertGreetingVisible', async () => {});
+        t.mock.method(HomeScreen.prototype, 'openActivityTab', async () => activity);
+        t.mock.method(ActivityScreen.prototype, 'assertActivityHeader', async () => activity);
+        t.mock.method(ActivityScreen.prototype, 'openScreeningVaccinationFeedcard', async () => form);
+        for (const method of [
+          'openSubmissionForm', 'acceptDataPrivacyNotice', 'assertFormLoaded',
+          'assertProofUploadControlVisible', 'selectFluType', 'selectCurrentDate',
+          'submitForm', 'assertSubmissionBlockedWithoutProof', 'uploadPngFromDevice',
+          'assertSubmissionSuccessful', 'tapDone'
+        ] as const) {
+          t.mock.method(ScreeningVaccinationScreen.prototype, method, async () => {});
+        }
       }
 
       const mocha = new Mocha({ reporter: Mocha.reporters.Base, timeout: 5_000 });
@@ -134,7 +158,7 @@ for (const file of ['login-logout', 'mha-low-risk', 'mha-high-risk', 'incorrect-
           bodiesRun++;
           assert.equal(testAccounts.member, `mdev--${email}`);
           assert.equal(fetchMock.mock.callCount(), 9);
-          if (file === 'incorrect-password-lockout') {
+          if (file === 'incorrect-password-lockout' || file === 'screening-vaccination') {
             assert.ok(originalBody);
             assert.ok(mobileTest.ctx);
             await originalBody.call(mobileTest.ctx, error => {
@@ -151,6 +175,11 @@ for (const file of ['login-logout', 'mha-low-risk', 'mha-high-risk', 'incorrect-
       assert.equal(bodiesRun, 1);
       assert.equal(fetchMock.mock.callCount(), 9);
       assert.equal(mobileSessionsStarted, 1);
+      if (file === 'screening-vaccination') {
+        assert.deepEqual(usernames, [`mdev--${email}`]);
+        assert.deepEqual(passwords, ['test-password']);
+        assert.equal(submits, 1);
+      }
       if (file === 'incorrect-password-lockout' && succeeds) {
         assert.deepEqual(usernames, [`mdev--${email}`]);
         assert.deepEqual(passwords, ['intentionally-wrong-password']);

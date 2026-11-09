@@ -3,6 +3,10 @@
 
 LT_USERNAME=YOUR_USERNAME
 LT_ACCESS_KEY=YOUR_ACCESS_KEY
+# Optional: prefix the Base64-encoded value with `base64:`.
+# This is reversible encoding, not encryption or secure secret storage.
+# LT_USERNAME=base64:YOUR_BASE64_ENCODED_USERNAME
+# LT_ACCESS_KEY=base64:YOUR_BASE64_ENCODED_ACCESS_KEY
 
 # App ID (required): the LambdaTest app URL (lt://APP...) to install and test.
 # Provide a shared ID via LT_APP_ID, or platform-specific ones to override it.
@@ -13,6 +17,7 @@ LT_IOS_APP_ID=lt://APP...
 # App login settings (use dedicated test accounts)
 APP_USERNAME=YOUR_APP_TEST_USERNAME
 APP_PASSWORD=YOUR_APP_TEST_PASSWORD
+# APP_PASSWORD also accepts the `base64:` prefix for an encoded value.
 # Lockout provisions a fresh user with APP_PASSWORD, then attempts login with this incorrect password.
 INCORRECT_APP_PASSWORD=YOUR_INTENTIONALLY_INCORRECT_PASSWORD
 # APP_INCORRECT_PASSWORD is also accepted as a legacy alias.

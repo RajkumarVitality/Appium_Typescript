@@ -8,7 +8,7 @@ export const scenarios = {
   'mha-unanswered': { file: 'regression/mha-unanswered.spec.ts', name: 'MHA Required Answer Validation', provisionMember: true },
   'mha-exit-partial': { file: 'regression/mha-exit-partial.spec.ts', name: 'MHA Exit Partial Assessment', provisionMember: true },
   'mha-privacy-cancel': { file: 'regression/mha-privacy-cancel.spec.ts', name: 'MHA Privacy Consent Cancellation', provisionMember: true },
-  'screening': { file: 'regression/screening-vaccination.spec.ts', name: 'Screening Vaccination Form Submission', provisionMember: false }
+  'screening': { file: 'regression/screening-vaccination.spec.ts', name: 'Screening Vaccination Form Submission', provisionMember: true }
 } as const;
 
 export type Scenario = keyof typeof scenarios;
@@ -23,7 +23,8 @@ export const suites = {
     `./tests/${scenarios['mha-low-risk'].file}`,
     `./tests/${scenarios['mha-privacy-cancel'].file}`,
     `./tests/${scenarios['mha-unanswered'].file}`,
-    `./tests/${scenarios['mha-exit-partial'].file}`
+    `./tests/${scenarios['mha-exit-partial'].file}`,
+    `./tests/${scenarios['screening'].file}`
   ]
 };
 

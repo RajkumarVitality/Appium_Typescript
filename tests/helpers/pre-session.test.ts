@@ -50,13 +50,8 @@ for (const outcome of ['success', 'failure', 'registration-failure', 'login-even
         ? './tests/regression/screening-vaccination.spec.ts'
         : './tests/regression/mha-unanswered.spec.ts')};
       await executeHooksWithArgs('beforeSession', config.beforeSession, [config, caps, [spec], '0-0']);
-      if (${JSON.stringify(outcome)} === 'screening') {
-        assert.equal(requests, 0);
-        assert.throws(() => testAccounts.member, /has not been provisioned/);
-      } else {
-        assert.equal(requests, 9);
-        assert.match(testAccounts.member, /^mdev--/);
-      }
+      assert.equal(requests, 9);
+      assert.match(testAccounts.member, /^mdev--/);
       process.stdout.write('MOBILE_SESSION_CREATION_REACHED');
     `], {
       cwd: projectRoot,

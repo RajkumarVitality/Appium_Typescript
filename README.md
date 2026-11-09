@@ -3,6 +3,10 @@
 This project runs Android and iOS mobile UI tests with TypeScript, WebdriverIO,
 Mocha, and the TestMu AI (formerly LambdaTest) real-device cloud.
 
+For the implementation architecture, mobile-session lifecycle, configuration
+resolution, capabilities, and reporting design, see the
+[technical documentation](./docs/technical-documentation.md).
+
 ## LambdaTest script generator agent
 
 The workspace custom agent is defined in
@@ -79,12 +83,34 @@ Required settings:
   these are set. Note that the Android app ID used to differ by scenario
   (login/ios-login/screening/mha used one app, lockout used another); you are
   now responsible for setting the correct one per run.
-- `APP_PASSWORD` for registration of generated login/logout, MHA and lockout users,
-  and for screening login. `APP_USERNAME` is used for screening.
+- `APP_PASSWORD` for registration and login of generated login/logout, MHA,
+  lockout, and screening users. `APP_USERNAME` is not required for these scenarios.
 - `INCORRECT_APP_PASSWORD` for the account-lockout test
   (`APP_INCORRECT_PASSWORD` is also accepted as a legacy alias).
   It must differ from `APP_PASSWORD`. The test provisions and locks a fresh
   account; `LOCKOUT_USERNAME` is not required.
+
+In `lambdatest.properties`, `LT_USERNAME`, `LT_ACCESS_KEY` (including legacy
+aliases `UserName` and `AccessKey`) and `APP_PASSWORD` may use
+`base64:<encoded-value>`; the runner decodes these values when loading the
+file. Environment-variable values remain unchanged. Base64 is reversible
+encoding, not encryption, and does not protect credentials from anyone who
+can read the properties file. Prefer environment variables or a secret manager
+when secure storage is required.
+
+For example, these dummy values decode to `user`, `ltkey` and `password`:
+
+```properties
+LT_USERNAME=base64:dXNlcg==
+LT_ACCESS_KEY=base64:bHRrZXk=
+APP_PASSWORD=base64:cGFzc3dvcmQ=
+```
+
+Encode each value as UTF-8 using standard Base64 with padding and no line
+breaks. Keep the `base64:` prefix so plain-text values remain supported.
+For example, `printf '%s' 'dummy-value' | base64` encodes a dummy value
+without adding a newline to the input. Avoid entering real credentials in
+shell commands that may be saved in history.
 
 The mental-health assessment journeys, login/logout and lockout scenarios provision a new
 member account in the worker's WebdriverIO `beforeSession` hook, before opening
@@ -96,7 +122,7 @@ worker with exit code 1 before any real mobile session is opened; there is no
 fallback to a fixed account. This explicit worker exit is necessary because
 WebdriverIO otherwise logs ordinary `beforeSession` errors and continues.
 Mocha suite hooks only verify that the account is ready, without provisioning again.
-The fixed-account screening scenario does not provision a member.
+The screening scenario also provisions a fresh member before opening a mobile session.
 `testAccounts.member` exposes the selected profile's `LOGIN_PREFIX` plus the generated
 email only after setup succeeds. API requests use the unprefixed email.
 The password is always read from `APP_PASSWORD`, never stored in the fixture.
@@ -148,6 +174,12 @@ Optional settings:
 
 ## Run the scenarios
 
+Interactive test commands ask for the platform (`1. Android`, `2. iOS`) and
+environment (`1. ca-test`, `2. dev`, `3. mdev`) before starting. The `dev`
+choice selects the existing `ca-dev` profile. Press Enter to use the shown
+default (Android and mdev). In non-interactive CI runs, prompts are skipped;
+set `PLATFORM` and `VG_ENVIRONMENT` in the environment instead.
+
 ### Smoke and regression packs
 
 ```bash
@@ -163,11 +195,14 @@ PLATFORM=iOS npm run test:regression
 | Smoke | `login-logout.spec.ts`, `mha-high-risk.spec.ts` |
 | Regression | `incorrect-password-lockout.spec.ts`, `mha-low-risk.spec.ts` |
 
-These named WebdriverIO suites run only the listed specs, sequentially
-(`maxInstances: 1`), with a separate, freshly reset mobile session and a newly
-provisioned member for each spec. They use the existing cloud, platform, app,
-and user-creation settings; no credentials are stored in the suite definitions.
-Regression also requires `INCORRECT_APP_PASSWORD`.
+These named WebdriverIO suites run only the listed specs, with a separate,
+freshly reset mobile session and a newly provisioned member for each spec.
+Smoke runs with up to five workers (`maxInstances: 5`); regression remains
+sequential (`maxInstances: 1`). The smoke pack currently has two specs, so it
+can open up to two sessions concurrently. Pass `--maxInstances <count>` after
+`npm run test:smoke --` to override the smoke worker limit. They use the existing cloud,
+platform, app, and user-creation settings; no credentials are stored in the
+suite definitions. Regression also requires `INCORRECT_APP_PASSWORD`.
 Specs are resolved from `tests/smoke/` and `tests/regression/`; the scenario
 registry stores paths relative to `tests/`, not the former `tests/testScenarios/`.
 Direct runner selection is supported with
@@ -325,24 +360,33 @@ The console spec reporter and existing timestamped artifacts remain enabled.
 Allure includes execution steps, screenshots, session configuration, execution
 logs, and page source captured on failure.
 
-Run a scenario and then generate and open its HTML report:
+Run a scenario, then launch the report filter UI:
 
 ```bash
 PLATFORM=Android npm run test:mha-high-risk
 npm run report:generate
-npm run report:open
 ```
+
+Each test result is labeled with its user-creation environment (`mdev`,
+`ca-test`, or `ca-dev`). The browser UI lets you select inclusive start/end
+dates and an environment before generating the report. Dates use UTC
+(`YYYY-MM-DD`); leave them blank to include all dates. The selected dates and
+environment are shown above the embedded Allure report. Only the generated
+report is filtered: the original `target/allure-results/` files are unchanged.
+The `dev` profile appears as `ca-dev`. Older results without environment labels
+can still be filtered by date.
 
 Run report generation even when the test fails to inspect the failure evidence.
 The Allure command-line tool requires Java on your PATH (`JAVA_HOME` may also
-be used). Report generation is explicit, so it does not change the test exit
-status or open another browser during test execution.
+be used). `report:generate` starts a local report UI and opens it in your
+default browser; leave that terminal running while using the report, and press
+Ctrl+C when finished. `report:open` starts the same UI.
 
-Results accumulate across runs. `report:generate` replaces only the generated
-HTML report, not raw results. For a fresh report, remove the specific
-`target/allure-results/` directory before starting the next run. Both results
-and reports are ignored by Git under `target/`. They can contain account and
-screen data; keep them private and restrict access to CI artifacts.
+Results accumulate across runs. Each generated, filtered report is stored in
+`target/allure-filtered-reports/`; the source results and previous reports are
+not replaced. These directories are ignored by Git under `target/`. Reports
+can contain account and screen data; keep them private and restrict access to
+CI artifacts.
 
 ## Scrolling
 
