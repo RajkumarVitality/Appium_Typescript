@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="allure-report-email">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/target/allure-report-email.zip!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>
