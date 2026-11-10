@@ -64,6 +64,7 @@ export async function enrolUser(carrierPartyId: number): Promise<EnrolledUser> {
     throw new Error(`Provide a valid ${profilePrefix}API_BEARER_TOKEN before enrolling a user.`);
   }
   const userAgent = requiredUserCreationSetting('configUserAgent');
+  const productKey = requiredUserCreationSetting(`${profilePrefix}VITALITY_PRODUCT_KEY`);
   const emailDomain = requiredUserCreationSetting(`${profilePrefix}EMAIL_DOMAIN`).replace(/^@+/, '');
   if (!emailDomain || /[\s@]/.test(emailDomain)) {
     throw new Error('User enrolment requires a valid email domain.');
@@ -82,7 +83,7 @@ export async function enrolUser(carrierPartyId: number): Promise<EnrolledUser> {
   const payload = {
     activateVitalityMembership: {
       membershipReferences: [{ typeKey: 1, value: membershipReference }],
-      product: { identifierTypeKey: '7' },
+      product: { identifierTypeKey: productKey },
       effectivePeriod: { effectiveTo: endOfTime, effectiveFrom: today },
       partyRoles: [{
         effectiveTo: endOfTime,
@@ -247,8 +248,8 @@ function requiredPositiveId(value: unknown, field: string): number {
 
 function getProfilePrefix(): string {
   const environment = (userCreationSetting('VG_ENVIRONMENT') ?? 'mdev').toLowerCase();
-  if (!['mdev', 'ca-test', 'ca-dev'].includes(environment)) {
-    throw new Error('VG_ENVIRONMENT must be one of: mdev, ca-test, ca-dev.');
+  if (!['mdev', 'ca-test', 'ca-dev', 'uat'].includes(environment)) {
+    throw new Error('VG_ENVIRONMENT must be one of: mdev, ca-test, ca-dev, uat.');
   }
   return `VG_${environment.toUpperCase().replace('-', '_')}_`;
 }

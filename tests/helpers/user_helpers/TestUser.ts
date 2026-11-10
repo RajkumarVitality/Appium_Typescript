@@ -32,6 +32,34 @@ export function assertTestAccountReady(): void {
   void testAccounts.member;
 }
 
+async function provisioningStep<T>(
+  environment: string,
+  name: string,
+  endpoint: string,
+  action: () => Promise<T>,
+  baseUrlKey: 'ZUUL_URL' | 'INTEGRATION_PLATFORM_BASE_URL' = 'INTEGRATION_PLATFORM_BASE_URL'
+): Promise<T> {
+  const prefix = `VG_${environment.toUpperCase().replace('-', '_')}_`;
+  const tenant = requiredUserCreationSetting(`${prefix}TENANT_NUMBER`);
+  const baseUrl = requiredUserCreationSetting(`${prefix}${baseUrlKey}`).replace(/\/+$/, '');
+  const target = new URL(`${baseUrl}${endpoint.replace('{tenant}', tenant)}`);
+  const resolvedEndpoint = `${target.origin}${target.pathname}`;
+  const context = `[UserProvisioning][${environment}] ${name} | POST ${resolvedEndpoint}`;
+  const started = Date.now();
+  console.log(`${context} | START`);
+  try {
+    const result = await action();
+    const status = result instanceof Response ? ` | HTTP ${result.status}` : '';
+    console.log(`${context} | SUCCESS${status} | ${Date.now() - started} ms`);
+    return result;
+  } catch (error) {
+    console.error(
+      `${context} | FAILED | ${Date.now() - started} ms | ${error instanceof Error ? error.message : String(error)}`
+    );
+    throw error;
+  }
+}
+
 export async function initializeTestAccountsForSpecs(specs: string[]): Promise<void> {
   member = undefined;
   if (specs.length !== 1) {
@@ -57,13 +85,13 @@ export async function initializeTestAccountsForSpecs(specs: string[]): Promise<v
 export async function initializeTestAccounts(): Promise<void> {
   member = undefined;
   const environment = (userCreationSetting('VG_ENVIRONMENT') ?? 'mdev').toLowerCase();
-  if (!['mdev', 'ca-test', 'ca-dev'].includes(environment)) {
-    throw new Error('VG_ENVIRONMENT must be one of: mdev, ca-test, ca-dev.');
+  if (!['mdev', 'ca-test', 'ca-dev', 'uat'].includes(environment)) {
+    throw new Error('VG_ENVIRONMENT must be one of: mdev, ca-test, ca-dev, uat.');
   }
   const prefix = `VG_${environment.toUpperCase().replace('-', '_')}_`;
   const loginPrefix = requiredUserCreationSetting(`${prefix}LOGIN_PREFIX`);
   requiredSetting('APP_PASSWORD');
-  for (const key of ['ZUUL_URL', 'TENANT_NUMBER', 'INTEGRATION_PLATFORM_BASE_URL', 'EMAIL_DOMAIN']) {
+  for (const key of ['ZUUL_URL', 'TENANT_NUMBER', 'INTEGRATION_PLATFORM_BASE_URL', 'EMAIL_DOMAIN', 'VITALITY_PRODUCT_KEY']) {
     requiredUserCreationSetting(`${prefix}${key}`);
   }
   requiredUserCreationSetting('configUserAgent');
@@ -73,16 +101,31 @@ export async function initializeTestAccounts(): Promise<void> {
       throw new Error(`Provide a valid ${prefix}${key} before provisioning the member account.`);
     }
   }
-  const carrierPartyId = await createPartyCore();
-  const user = await enrolUser(carrierPartyId);
-  await registerUser(user);
-  await calculateVitalityStatus(user.vitalityMembershipId);
+  const carrierPartyId = await provisioningStep(environment, 'Party creation',
+    '/party-core-management/svc/{tenant}/createPartyCore/1', createPartyCore, 'ZUUL_URL');
+  const user = await provisioningStep(environment, 'Enrolment',
+    '/vitality-enrolment-services-service-1/1.0/svc/{tenant}/instructionBasedEnrolment',
+    () => enrolUser(carrierPartyId));
+  await provisioningStep(environment, 'Registration',
+    '/tstc-integration-platform-services-service-v1/1.0/register', () => registerUser(user));
+  await provisioningStep(environment, 'Vitality status calculation',
+    '/vitality-manage-vitality-status-service-1/svc/{tenant}/calculateVitalityStatus/{membershipId}',
+    () => calculateVitalityStatus(user.vitalityMembershipId), 'ZUUL_URL');
   //await loginUser(user.userName);
-  const instructions = await getUserInstruction(user.userName);
-  await captureLoginEvents(user.partyId, instructions.LOGIN_T_AND_C_ID);
-  await processEventToCreateReward(user.partyId);
-  await processEvents(user.partyId);
-  await deleteUserInstruction(user.userName, instructions);
+  const instructions = await provisioningStep(environment, 'Get user instructions',
+    '/vitality-manage-user-service-1/svc/{tenant}/getUserInstruction',
+    () => getUserInstruction(user.userName), 'ZUUL_URL');
+  await provisioningStep(environment, 'Capture login events',
+    '/vitality-manage-user-service-v1/1.0/svc/{tenant}/captureLoginEvents/{partyId}',
+    () => captureLoginEvents(user.partyId, instructions.LOGIN_T_AND_C_ID));
+  await provisioningStep(environment, 'Create reward event',
+    '/vitality-manage-rewards-service/1.0/svc/{tenant}/processEventToCreateReward',
+    () => processEventToCreateReward(user.partyId));
+  await provisioningStep(environment, 'Process events',
+    '/vitality-manage-events-service-v1/1.0/svc/{tenant}/processEvents', () => processEvents(user.partyId));
+  await provisioningStep(environment, 'Delete onboarding instructions',
+    '/vitality-manage-user-service-v1/1.0/svc/{tenant}/deleteUserInstruction',
+    () => deleteUserInstruction(user.userName, instructions));
   printUserDetails(user);
   member = `${loginPrefix}${user.userName}`;
   console.log(`Member username: ${member}`);

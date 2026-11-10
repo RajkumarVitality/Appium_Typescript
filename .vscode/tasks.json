@@ -1,10 +1,23 @@
 {
 	"version": "2.0.0",
+	"inputs": [
+		{
+			"id": "tenantNumber",
+			"type": "promptString",
+			"description": "Enter TENANT_NUMBER for the MDEV user creation run",
+			"default": "9998"
+		}
+	],
 	"tasks": [
 		{
 			"label": "Create and enrol MDEV user",
 			"type": "shell",
 			"command": "VG_ENVIRONMENT=mdev node --import tsx --input-type=module -e \"import { requiredUserCreationSetting } from './src/config/userCreation.ts'; import { createPartyCore, enrolUser } from './src/config/API-to-Create-New-User.ts'; try { const token = requiredUserCreationSetting('VG_MDEV_API_BEARER_TOKEN').replace(/^Bearer\\\\s+/i, ''); if (!token || token === '******') throw new Error('Set a valid VG_MDEV_API_BEARER_TOKEN in local user-creation.properties before running. No party has been created.'); const partyId = await createPartyCore(); console.log('Party creation: HTTP 201; carrierPartyId:', partyId); const user = await enrolUser(partyId); console.log('Enrolment: HTTP 200'); console.log(JSON.stringify(user, null, 2)); } catch (error) { console.error(error instanceof Error ? error.message : 'MDEV user creation failed.'); process.exitCode = 1; }\"",
+			"options": {
+				"env": {
+					"VG_MDEV_TENANT_NUMBER": "${input:tenantNumber}"
+				}
+			},
 			"isBackground": false,
 			"problemMatcher": []
 		},
@@ -12,6 +25,11 @@
 			"label": "Run complete MDEV user provisioning",
 			"type": "shell",
 			"command": "VG_ENVIRONMENT=mdev node --import tsx --input-type=module -e \"import * as api from './src/config/API-to-Create-New-User.ts'; import { requiredUserCreationSetting } from './src/config/userCreation.ts'; import { requiredSetting } from './src/config/mobileSessionInit.ts'; let stage = 'Configuration'; try { for (const key of ['VG_MDEV_ZUUL_URL', 'VG_MDEV_TENANT_NUMBER', 'VG_MDEV_INTEGRATION_PLATFORM_BASE_URL', 'VG_MDEV_EMAIL_DOMAIN', 'configUserAgent']) requiredUserCreationSetting(key); for (const key of ['VG_MDEV_API_BEARER_TOKEN', 'VG_MDEV_API_BASIC_AUTH']) { const value = requiredUserCreationSetting(key).replace(/^(Bearer|Basic)\\s+/i, ''); if (!value || value === '******') throw new Error('Provide a valid ' + key + '.'); } requiredSetting('APP_PASSWORD'); stage = 'Party creation'; const carrierPartyId = await api.createPartyCore(); console.log(stage + ': HTTP 201; carrierPartyId: ' + carrierPartyId); stage = 'Enrolment'; const user = await api.enrolUser(carrierPartyId); console.log(stage + ': HTTP 200; partyId: ' + user.partyId); api.printUserDetails(user); stage = 'Registration'; console.log(stage + ': HTTP ' + (await api.registerUser(user)).status); stage = 'Vitality status calculation'; console.log(stage + ': HTTP ' + (await api.calculateVitalityStatus(user.vitalityMembershipId)).status); stage = 'Login'; console.log(stage + ': HTTP ' + (await api.loginUser(user.userName)).status); stage = 'Get user instructions'; const ids = await api.getUserInstruction(user.userName); console.log(stage + ': completed'); stage = 'Capture login events'; console.log(stage + ': HTTP ' + (await api.captureLoginEvents(user.partyId, ids.LOGIN_T_AND_C_ID)).status); stage = 'Create reward event'; console.log(stage + ': HTTP ' + (await api.processEventToCreateReward(user.partyId)).status); stage = 'Process events'; console.log(stage + ': HTTP ' + (await api.processEvents(user.partyId)).status); stage = 'Delete onboarding instructions'; console.log(stage + ': HTTP ' + (await api.deleteUserInstruction(user.userName, ids)).status); api.printUserDetails(user); } catch (error) { console.error(stage + ' failed: ' + (error instanceof Error ? error.message : 'Unknown error')); process.exitCode = 1; }\"",
+			"options": {
+				"env": {
+					"VG_MDEV_TENANT_NUMBER": "${input:tenantNumber}"
+				}
+			},
 			"isBackground": false,
 			"problemMatcher": []
 		}

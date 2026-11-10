@@ -5,6 +5,7 @@ configUserAgent=VitalityActive/1.0.0.432/2.0 (iPhone 5,4; iOS 10.1)
 
 # enrolUser uses the API gateway base URL (including /api), bearer token and email domain.
 # createPartyCore requires HTTP 201; enrolUser requires HTTP 200.
+# enrolUser uses the selected profile's VITALITY_PRODUCT_KEY as product.identifierTypeKey.
 # registerUser uses API_BASIC_AUTH, configUserAgent and APP_PASSWORD from lambdatest.properties.
 # Registration requires HTTP 201 and uses userName, insurerCode and bornOn returned by enrolUser.
 # loginUser uses the enrolled userName, APP_PASSWORD, API_BASIC_AUTH and configUserAgent.
@@ -52,3 +53,13 @@ VG_CA_DEV_EMAIL_DOMAIN=
 VG_CA_DEV_API_BASIC_AUTH=
 VG_CA_DEV_API_BEARER_TOKEN=
 VG_CA_DEV_LOGIN_PREFIX=dev--
+
+VG_UAT_TENANT_NUMBER=
+VG_UAT_ZUUL_URL=
+VG_UAT_INTEGRATION_PLATFORM_BASE_URL=
+VG_UAT_VITALITY_PRODUCT_KEY=
+VG_UAT_MEMBERSHIP_REFERENCE_KEYS=
+VG_UAT_EMAIL_DOMAIN=
+VG_UAT_API_BASIC_AUTH=
+VG_UAT_API_BEARER_TOKEN=
+VG_UAT_LOGIN_PREFIX=qa--

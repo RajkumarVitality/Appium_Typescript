@@ -10,6 +10,7 @@ test('member fixture is provisioned before use and includes the selected login p
     VG_MDEV_INTEGRATION_PLATFORM_BASE_URL: 'https://example.invalid/api',
     VG_MDEV_TENANT_NUMBER: '9998',
     VG_MDEV_EMAIL_DOMAIN: 'example.invalid',
+    VG_MDEV_VITALITY_PRODUCT_KEY: '7',
     VG_MDEV_API_BASIC_AUTH: 'test-basic',
     VG_MDEV_API_BEARER_TOKEN: 'test-bearer',
     APP_PASSWORD: 'test-password',

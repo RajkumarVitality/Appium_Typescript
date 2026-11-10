@@ -121,6 +121,14 @@ are logged with the original configuration or API error and terminate that
 worker with exit code 1 before any real mobile session is opened; there is no
 fallback to a fixed account. This explicit worker exit is necessary because
 WebdriverIO otherwise logs ordinary `beforeSession` errors and continues.
+Each provisioning API step logs its environment, step name, POST endpoint with
+the selected profile's configured `TENANT_NUMBER`,
+`START`, and `SUCCESS` or `FAILED`, with elapsed time. Responses returned by API
+helpers also show the HTTP status; failures retain the original API or network
+error. Logs include the configured `ZUUL_URL` for party creation, status calculation
+and instruction lookup, or `INTEGRATION_PLATFORM_BASE_URL` for other steps.
+Endpoint templates omit member IDs, and these step logs do not include
+credentials or request bodies. A failed step stops subsequent provisioning steps.
 Mocha suite hooks only verify that the account is ready, without provisioning again.
 The screening scenario also provisions a fresh member before opening a mobile session.
 `testAccounts.member` exposes the selected profile's `LOGIN_PREFIX` plus the generated
@@ -174,11 +182,23 @@ Optional settings:
 
 ## Run the scenarios
 
-Interactive test commands ask for the platform (`1. Android`, `2. iOS`) and
-environment (`1. ca-test`, `2. dev`, `3. mdev`) before starting. The `dev`
-choice selects the existing `ca-dev` profile. Press Enter to use the shown
-default (Android and mdev). In non-interactive CI runs, prompts are skipped;
-set `PLATFORM` and `VG_ENVIRONMENT` in the environment instead.
+Interactive test commands first ask for `TENANT_NUMBER` for user creation, then
+a matching environment, then the platform (`1. Android`, `2. iOS`),
+then the uploaded AppId (`lt://...`)
+before starting. AppId must be entered; blank input prompts again. The entered
+AppId overrides app settings from `lambdatest.properties` for the whole run.
+Tenant input is required and matched against each profile's `TENANT_NUMBER`
+in `user-creation.properties` (environment-variable overrides still apply).
+Only matching profiles are offered; a single match is selected automatically.
+For example, if MDEV and UAT both configure tenant `34`, entering `34` offers
+`1. MDEV  2. UAT`. Unknown tenants prompt again instead of overriding a profile.
+Press Enter at the platform or environment prompt to use the shown default.
+The selection applies to all provisioning workers without modifying the properties file.
+In non-interactive CI runs, prompts are skipped; set `PLATFORM`,
+`VG_ENVIRONMENT`, and the profile-specific tenant variable (for example,
+`VG_MDEV_TENANT_NUMBER`) in the environment instead.
+For non-interactive runs, supply `appId=lt://APP_ID` in the environment to
+override app settings from `lambdatest.properties`.
 
 ### Smoke and regression packs
 
@@ -255,12 +275,14 @@ from the mobile/cloud settings in `lambdatest.properties`. Copy
 `user-creation.properties` and fill in the selected profile. The local file is
 ignored by Git; never commit API credentials.
 
-Set `VG_ENVIRONMENT` to `mdev`, `ca-test`, or `ca-dev` (default: `mdev`).
+Set `VG_ENVIRONMENT` to `mdev`, `ca-test`, `ca-dev`, or `uat` (default: `mdev`).
 The corresponding prefixes are `VG_MDEV_`, `VG_CA_TEST_`, and `VG_CA_DEV_`.
 Each profile requires `TENANT_NUMBER`, `ZUUL_URL`,
 `INTEGRATION_PLATFORM_BASE_URL`, `VITALITY_PRODUCT_KEY`,
 `MEMBERSHIP_REFERENCE_KEYS` (comma-separated), `EMAIL_DOMAIN`, and
 `API_BASIC_AUTH` (base64 credentials, optionally prefixed with `Basic`).
+Enrolment uses the selected profile's `VITALITY_PRODUCT_KEY` for
+`product.identifierTypeKey`; there is no hardcoded product-key default.
 Product keys accept `VITALITYACTIVEV1`, `SLI_VITALITY`, or numeric values.
 Membership reference keys accept `POLICY_NUMBER`,
 `PARTNER_CONTRACT_NUMBER`, or numeric values.

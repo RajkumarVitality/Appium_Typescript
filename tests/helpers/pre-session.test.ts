@@ -13,7 +13,10 @@ for (const outcome of ['success', 'failure', 'registration-failure', 'login-even
       import { executeHooksWithArgs } from '@wdio/utils';
       import { config } from './wdio.conf.ts';
       import { testAccounts } from './tests/helpers/user_helpers/TestUser.ts';
-      console.log = () => {};
+      console.log = (...args) => {
+        const message = args.join(' ');
+        if (message.includes('[UserProvisioning]')) process.stdout.write(message + '\\n');
+      };
       let requests = 0;
       globalThis.fetch = async (url) => {
         requests++;
@@ -73,6 +76,7 @@ for (const outcome of ['success', 'failure', 'registration-failure', 'login-even
         VG_MDEV_INTEGRATION_PLATFORM_BASE_URL: 'https://example.invalid/api',
         VG_MDEV_TENANT_NUMBER: '9998',
         VG_MDEV_EMAIL_DOMAIN: 'example.invalid',
+        VG_MDEV_VITALITY_PRODUCT_KEY: '7',
         VG_MDEV_API_BASIC_AUTH: 'test-basic',
         VG_MDEV_API_BEARER_TOKEN: 'test-bearer',
         APP_PASSWORD: 'test-password',
@@ -80,10 +84,17 @@ for (const outcome of ['success', 'failure', 'registration-failure', 'login-even
       }
     });
     assert.ifError(result.error);
+    assert.doesNotMatch(result.stdout + result.stderr, /\{tenant\}/);
+    assert.match(result.stdout, /POST https:\/\/example\.invalid\/party-core-management\/svc\/9998\/createPartyCore\/1/);
     if (outcome.endsWith('failure')) {
       assert.equal(result.status, 1, result.stderr);
       assert.equal(result.stdout.includes('MOBILE_SESSION_CREATION_REACHED'), false);
       assert.match(result.stderr, /stopping worker without opening a mobile session/);
+      const failedStep = outcome === 'registration-failure' ? 'Registration'
+        : outcome === 'login-event-failure' ? 'Capture login events' : 'Party creation';
+      assert.match(result.stderr, new RegExp(`\\[UserProvisioning\\]\\[mdev\\] ${failedStep} \\| POST https://example\\.invalid/.* \\| FAILED`));
+      assert.doesNotMatch(result.stdout, /Member ready/);
+      assert.doesNotMatch(result.stderr, /test-basic|test-bearer|test-password/);
       if (outcome === 'login-event-failure') {
         assert.match(result.stderr, /Capture-login-events request failed/);
         assert.match(result.stderr, /ECONNRESET/);
@@ -93,6 +104,13 @@ for (const outcome of ['success', 'failure', 'registration-failure', 'login-even
     } else {
       assert.equal(result.status, 0, result.stderr);
       assert.ok(result.stdout.includes('MOBILE_SESSION_CREATION_REACHED'));
+      assert.equal((result.stdout.match(/\| START/g) ?? []).length, 9);
+      assert.equal((result.stdout.match(/\| SUCCESS/g) ?? []).length, 9);
+      assert.match(result.stdout, /Registration .* \| SUCCESS \| HTTP 201/);
+      assert.match(result.stdout, /POST https:\/\/example\.invalid\/api\/tstc-integration-platform-services-service-v1\/1\.0\/register/);
+      assert.match(result.stdout, /POST https:\/\/example\.invalid\/vitality-manage-vitality-status-service-1\/svc\/9998/);
+      assert.match(result.stdout, /POST https:\/\/example\.invalid\/vitality-manage-user-service-1\/svc\/9998\/getUserInstruction/);
+      assert.doesNotMatch(result.stderr, /\| FAILED/);
     }
   });
 }

@@ -10,6 +10,7 @@ test('status calculation uses vitalityMembership.id returned by enrolment', asyn
     VG_MDEV_TENANT_NUMBER: '9998',
     VG_MDEV_API_BEARER_TOKEN: 'test-token',
     VG_MDEV_EMAIL_DOMAIN: 'example.invalid',
+    VG_MDEV_VITALITY_PRODUCT_KEY: '7',
     configUserAgent: 'test-agent'
   };
   for (const [key, value] of Object.entries(keys)) {
@@ -99,6 +100,7 @@ test('created party ID is used in enrolment with dynamic data and configured hea
     VG_MDEV_TENANT_NUMBER: '9998',
     VG_MDEV_API_BEARER_TOKEN: 'Bearer test-token',
     VG_MDEV_EMAIL_DOMAIN: '@vgnet.testinator.com',
+    VG_MDEV_VITALITY_PRODUCT_KEY: '7',
     VG_MDEV_API_BASIC_AUTH: 'Basic test-basic-auth',
     APP_PASSWORD: 'test-password',
     configUserAgent: 'test-agent'
@@ -131,6 +133,7 @@ test('created party ID is used in enrolment with dynamic data and configured hea
     const payload = JSON.parse(String(init.body));
     assert.equal(payload.instructionTypeKey, 10);
     const membership = payload.activateVitalityMembership;
+    assert.equal(membership.product.identifierTypeKey, '7');
     assert.equal(membership.membershipReferences[0].typeKey, 1);
     assert.match(membership.membershipReferences[0].value, /^[1-9]\d{9}$/);
     const today = membership.effectivePeriod.effectiveFrom;
