@@ -78,7 +78,7 @@ export async function enrolUser(carrierPartyId: number): Promise<EnrolledUser> {
   const membershipReference = String(randomInt(1_000_000_000, 10_000_000_000));
   const externalMembershipId = `${timestamp}${randomInt(1000, 10_000)}`;
   const email = `${firstName}_${externalMembershipId}@${emailDomain}`;
-  const bornOn = '1995-02-11';
+  const bornOn = '2000-02-11';
   const endOfTime = '9999-12-31';
   const payload = {
     activateVitalityMembership: {

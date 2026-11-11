@@ -2,6 +2,7 @@ import { MobileSession } from '../utils/Mobile Utils_Scrolll_Xpath_Timeout.js';
 import { BaseScreen } from './BaseScreen.js';
 import { ProfileScreen } from './ProfileScreen.js';
 import { ActivityScreen } from './ActivityScreen.js';
+import { HealthScreen } from './HealthScreen.js';
 
 export class HomeScreen extends BaseScreen {
   constructor(session: MobileSession) {
@@ -32,6 +33,16 @@ export class HomeScreen extends BaseScreen {
 
   async openActivityTab(): Promise<ActivityScreen> {
     await this.click("//*[@resource-id='vg_icon_bottom_nav_bar_clip_board_check']", "//*[@name='vg_icon_bottom_nav_bar_clip_board_check']");
+    return new ActivityScreen(this.session);
+  }
+
+  async openHealthTab(): Promise<HealthScreen> {
+    await this.click("//*[@resource-id='vg_icon_bottom_nav_bar_heart']", "//*[@name='vg_icon_bottom_nav_bar_heart']");
+    return new HealthScreen(this.session);
+  }
+
+  async openRewardTab(): Promise<ActivityScreen> {
+    await this.click("//*[@resource-id='vg_icon_bottom_nav_bar_gift_card']", "//*[@name='vg_icon_bottom_nav_bar_gift_card']");
     return new ActivityScreen(this.session);
   }
 }
